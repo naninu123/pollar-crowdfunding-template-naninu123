@@ -10,7 +10,7 @@ if (!apiKey) {
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <PollarSDKProvider apiKey={apiKey || ''}>
+    <PollarSDKProvider client={{ apiKey: apiKey || '', stellarNetwork: 'testnet' }}>
       {children}
     </PollarSDKProvider>
   );

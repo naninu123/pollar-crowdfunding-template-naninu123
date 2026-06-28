@@ -13,7 +13,7 @@ interface MilestoneInput {
 
 export default function CampaignForm() {
   const router = useRouter();
-  const { isConnected, address, signer } = usePollar();
+  const { isAuthenticated, walletAddress } = usePollar();
   const { createCampaign, loading, error } = useCampaign();
   
   const [title, setTitle] = useState('');
@@ -42,7 +42,7 @@ export default function CampaignForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!isConnected || !address || !signer) {
+    if (!isAuthenticated || !walletAddress) {
       alert('Please connect your wallet first');
       return;
     }
@@ -61,12 +61,11 @@ export default function CampaignForm() {
       engagementId: crypto.randomUUID(),
       title,
       description,
-      approver: address,
-      creator: address,
-      platformAddress: process.env.NEXT_PUBLIC_POLLAR_PLATFORM_ADDRESS || address,
+      approver: walletAddress,
+      creator: walletAddress,
+      platformAddress: process.env.NEXT_PUBLIC_POLLAR_PLATFORM_ADDRESS || walletAddress,
       amount: parseFloat(goal),
       platformFee: 0.025,
-      signer,
     });
 
     if (result.success) {
@@ -190,7 +189,7 @@ export default function CampaignForm() {
         </div>
       )}
 
-      {!isConnected && (
+      {!isAuthenticated && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
           Please connect your wallet to create a campaign
         </div>
@@ -198,7 +197,7 @@ export default function CampaignForm() {
 
       <button
         type="submit"
-        disabled={loading || !isConnected}
+        disabled={loading || !isAuthenticated}
         className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? 'Creating Campaign...' : 'Create Campaign'}

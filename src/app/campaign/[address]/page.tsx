@@ -23,7 +23,7 @@ function loadCampaigns(): Campaign[] {
 export default function CampaignDetailPage({ params }: { params: Promise<{ address: string }> }) {
   const [address, setAddress] = useState<string>('');
   const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const { isConnected, address: walletAddress, signer } = usePollar();
+  const { isAuthenticated, walletAddress } = usePollar();
   const { approveMilestone, releaseMilestone, disputeMilestone, loading } = useCampaign();
 
   useEffect(() => {
@@ -37,70 +37,49 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ addre
     setCampaign(found || null);
   }, [address]);
 
-  const refreshCampaign = useCallback(() => {
-    if (!address) return;
-    const campaigns = loadCampaigns();
-    const found = campaigns.find((c) => c.escrowAddress === address);
-    setCampaign(found || null);
-  }, [address]);
+  const isApprover = !!(isAuthenticated && campaign && walletAddress?.toLowerCase() === campaign.approver.toLowerCase());
 
-  const isApprover = isConnected && campaign && walletAddress?.toLowerCase() === campaign.approver.toLowerCase();
+  const persistCampaign = (updated: Campaign) => {
+    setCampaign(updated);
+    const campaigns = loadCampaigns().map((c) => (c.id === updated.id ? updated : c));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(campaigns));
+  };
 
   const handleApprove = async (milestoneId: string) => {
-    if (!signer || !campaign) return;
-    await approveMilestone(campaign.escrowAddress, milestoneId, signer);
-    // Update local state
-    if (campaign) {
-      const updated = {
-        ...campaign,
-        milestones: campaign.milestones.map((m) =>
-          m.id === milestoneId ? { ...m, status: 'approved' as const } : m
-        ),
-      };
-      setCampaign(updated);
-      // Persist
-      const campaigns = loadCampaigns().map((c) =>
-        c.id === updated.id ? updated : c
-      );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(campaigns));
-    }
+    if (!campaign) return;
+    const result = await approveMilestone(campaign.escrowAddress, milestoneId);
+    if (!result.success) return;
+    persistCampaign({
+      ...campaign,
+      milestones: campaign.milestones.map((m) =>
+        m.id === milestoneId ? { ...m, status: 'approved' as const } : m
+      ),
+    });
   };
 
   const handleRelease = async (milestoneId: string) => {
-    if (!signer || !campaign) return;
-    await releaseMilestone(campaign.escrowAddress, milestoneId, signer);
-    if (campaign) {
-      const updated = {
-        ...campaign,
-        milestones: campaign.milestones.map((m) =>
-          m.id === milestoneId ? { ...m, status: 'released' as const } : m
-        ),
-      };
-      setCampaign(updated);
-      const campaigns = loadCampaigns().map((c) =>
-        c.id === updated.id ? updated : c
-      );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(campaigns));
-    }
+    if (!campaign) return;
+    const result = await releaseMilestone(campaign.escrowAddress, milestoneId);
+    if (!result.success) return;
+    persistCampaign({
+      ...campaign,
+      milestones: campaign.milestones.map((m) =>
+        m.id === milestoneId ? { ...m, status: 'released' as const } : m
+      ),
+    });
   };
 
   const handleDispute = async (milestoneId: string, reason: string) => {
-    if (!signer || !campaign) return;
-    await disputeMilestone(campaign.escrowAddress, milestoneId, reason, signer);
-    if (campaign) {
-      const updated = {
-        ...campaign,
-        status: 'disputed' as const,
-        milestones: campaign.milestones.map((m) =>
-          m.id === milestoneId ? { ...m, status: 'disputed' as const } : m
-        ),
-      };
-      setCampaign(updated);
-      const campaigns = loadCampaigns().map((c) =>
-        c.id === updated.id ? updated : c
-      );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(campaigns));
-    }
+    if (!campaign) return;
+    const result = await disputeMilestone(campaign.escrowAddress, milestoneId, reason);
+    if (!result.success) return;
+    persistCampaign({
+      ...campaign,
+      status: 'disputed' as const,
+      milestones: campaign.milestones.map((m) =>
+        m.id === milestoneId ? { ...m, status: 'disputed' as const } : m
+      ),
+    });
   };
 
   if (!campaign) {
@@ -120,7 +99,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ addre
         <div className="lg:col-span-2">
           <MilestoneList
             milestones={campaign.milestones}
-            isApprover={!!isApprover}
+            isApprover={isApprover}
             onApprove={handleApprove}
             onRelease={handleRelease}
             onDispute={handleDispute}

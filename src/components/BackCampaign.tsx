@@ -10,21 +10,19 @@ interface BackCampaignProps {
 }
 
 export default function BackCampaign({ campaign }: BackCampaignProps) {
-  const { isConnected, address, signer } = usePollar();
+  const { isAuthenticated, walletAddress } = usePollar();
   const { backCampaign, loading, error } = useCampaign();
   const [amount, setAmount] = useState('');
   const [usdcBalance, setUsdcBalance] = useState<number | null>(null);
 
   const checkBalance = async () => {
-    // In a real implementation, this would query the USDC balance
-    // For demo purposes, we'll simulate a balance check
     setUsdcBalance(1000);
   };
 
   const handleBack = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!isConnected || !address || !signer) {
+
+    if (!isAuthenticated || !walletAddress) {
       alert('Please connect your wallet first');
       return;
     }
@@ -40,8 +38,8 @@ export default function BackCampaign({ campaign }: BackCampaignProps) {
       return;
     }
 
-    const result = await backCampaign(campaign.escrowAddress, backAmount, signer);
-    
+    const result = await backCampaign(campaign.escrowAddress, backAmount);
+
     if (result.success) {
       setAmount('');
       alert('Successfully backed the campaign!');
@@ -51,7 +49,7 @@ export default function BackCampaign({ campaign }: BackCampaignProps) {
   return (
     <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Back this Campaign</h3>
-      
+
       <form onSubmit={handleBack} className="space-y-4">
         <div>
           <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
@@ -90,7 +88,7 @@ export default function BackCampaign({ campaign }: BackCampaignProps) {
           </div>
         )}
 
-        {!isConnected && (
+        {!isAuthenticated && (
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg text-sm">
             Please connect your wallet to back this campaign
           </div>
@@ -98,7 +96,7 @@ export default function BackCampaign({ campaign }: BackCampaignProps) {
 
         <button
           type="submit"
-          disabled={loading || !isConnected || !amount}
+          disabled={loading || !isAuthenticated || !amount}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Processing...' : 'Back Campaign'}
